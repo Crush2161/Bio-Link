@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run BioLink Bot",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"bio.py"
+			],
+			"group": "run",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
