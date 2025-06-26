@@ -15,13 +15,13 @@ punishments_collection = db['punishments']
 whitelists_collection = db['whitelists']
 
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
-    async for member in client.get_chat_members(
-        chat_id,
-        filter=enums.ChatMembersFilter.ADMINISTRATORS
-    ):
-        if member.user.id == user_id:
-            return True
-    return False
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in [enums.ChatMemberStatus.OWNER, enums.ChatMemberStatus.ADMINISTRATOR]
+    except Exception as e:
+        # Handle cases where chat is invalid, user not found, or bot doesn't have access
+        print(f"Error checking admin status: {e}")
+        return False
 
 async def get_config(chat_id: int):
     doc = await punishments_collection.find_one({'chat_id': chat_id})
