@@ -48,6 +48,7 @@ async def get_user_info_safe(client: Client, user_id: int):
 @app.on_message(filters.command("start"))
 async def start_handler(client: Client, message):
     chat_id = message.chat.id
+    user_id = message.from_user.id
     bot = await client.get_me()
     add_url = f"https://t.me/{bot.username}?startgroup=true"
     text = (
@@ -60,13 +61,20 @@ async def start_handler(client: Client, message):
         "   • 𝐖𝐡𝐢𝐭𝐞𝐥𝐢𝐬𝐭 𝐦𝐚𝐧𝐚𝐠𝐞𝐦𝐞𝐧𝐭 𝐟𝐨𝐫 𝐭𝐫𝐮𝐬𝐭𝐞𝐝 𝐮𝐬𝐞𝐫𝐬\n\n"
         "**𝐔𝐬𝐞 /help 𝐭𝐨 𝐬𝐞𝐞 𝐚𝐥𝐥 𝐚𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐜𝐨𝐦𝐦𝐚𝐧𝐝𝐬.**"
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ 𝐀𝐝𝐝 𝐌𝐞 𝐭𝐨 𝐘𝐨𝐮𝐫 𝐆𝐫𝐨𝐮𝐩", url=add_url)],
-        [
-            InlineKeyboardButton("🛠️ 𝐒𝐮𝐩𝐩𝐨𝐫𝐭", url="https://t.me/Crush_Forever"),
-            InlineKeyboardButton("🗑️ 𝐂𝐥𝐨𝐬𝐞", callback_data="close")
-        ]
+    
+    # Create keyboard based on chat type and user
+    buttons = [[InlineKeyboardButton("➕ 𝐀𝐝𝐝 𝐌𝐞 𝐭𝐨 𝐘𝐨𝐮𝐫 𝐆𝐫𝐨𝐮𝐩", url=add_url)]]
+    
+    # Add owner button if it's private chat and user is bot owner
+    if chat_id > 0 and await is_bot_owner(user_id):
+        buttons.append([InlineKeyboardButton("👑 𝐎𝐰𝐧𝐞𝐫 𝐏𝐚𝐧𝐞𝐥", callback_data="owner_panel")])
+    
+    buttons.append([
+        InlineKeyboardButton("🛠️ 𝐒𝐮𝐩𝐩𝐨𝐫𝐭", url="https://t.me/Crush_Forever"),
+        InlineKeyboardButton("🗑️ 𝐂𝐥𝐨𝐬𝐞", callback_data="close")
     ])
+    
+    kb = InlineKeyboardMarkup(buttons)
     await client.send_message(chat_id, text, reply_markup=kb)
     
 @app.on_message(filters.command("help"))
@@ -216,8 +224,71 @@ async def callback_handler(client: Client, callback_query):
         chat_id = callback_query.message.chat.id
         user_id = callback_query.from_user.id
         
-        # Bot owner specific callbacks
-        if data == "refresh_stats":
+        # Check if user is admin or bot owner for regular callbacks
+        try:
+            # Handle close button first (special case)
+            if data == "close":
+                # In private chats, allow everyone to close their own messages
+                if chat_id > 0:  # Private chat
+                    return await callback_query.message.delete()
+                # In groups, check admin permissions
+                else:
+                    if await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id):
+                        return await callback_query.message.delete()
+                    else:
+                        return await callback_query.answer("❌ Only admins can close messages", show_alert=True)
+            
+            # For other actions, check admin permissions
+            if chat_id > 0:  # Private chat
+                # For other actions in private chat, only allow bot owner
+                is_user_admin = await is_bot_owner(user_id)
+            else:  # Group chat
+                is_user_admin = await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)
+        except Exception as e:
+            print(f"Error checking admin status in callback: {e}")
+            # Allow bot owner even if admin check fails
+            if await is_bot_owner(user_id):
+                is_user_admin = True
+            else:
+                return await callback_query.answer("❌ Error checking permissions", show_alert=True)
+            
+        # Handle owner panel callback
+        if data == "owner_panel":
+            if not await is_bot_owner(user_id):
+                return await callback_query.answer("❌ Access denied!", show_alert=True)
+            
+            owner_text = f"""
+👑 **Bot Owner Panel** 👑
+
+🤖 **Owner:** `{BOT_OWNER}`
+✅ **Status:** Active
+
+**Available Commands:**
+• `/stats` - View bot statistics
+• `/broadcast <message>` - Send to all groups  
+• `/globalban <user_id>` - Global ban user
+• `/adminlist` - Enhanced admin list
+
+**Owner Privileges:**
+✨ Exempt from bio checking in all groups
+✨ Admin access in all groups
+✨ Global management capabilities
+
+Use the buttons below for quick actions:
+            """
+            
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📊 View Stats", callback_data="owner_stats")],
+                [InlineKeyboardButton("📡 Quick Broadcast", callback_data="quick_broadcast")],
+                [InlineKeyboardButton("🔄 Refresh Panel", callback_data="owner_panel")],
+                [InlineKeyboardButton("🗑️ Close", callback_data="close")]
+            ])
+            
+            await callback_query.message.edit_text(owner_text, reply_markup=keyboard)
+            return await callback_query.answer("👑 Owner Panel Loaded!")
+        
+        # Handle owner stats callback
+        if data == "owner_stats":
             if not await is_bot_owner(user_id):
                 return await callback_query.answer("❌ Access denied!", show_alert=True)
             
@@ -245,38 +316,51 @@ async def callback_handler(client: Client, callback_query):
 • Total Warnings: `{total_warnings}`  
 • Total Whitelisted Users: `{total_whitelisted}`
 
-**Owner:** `{BOT_OWNER if BOT_OWNER else 'Not Set'}`
-
+**Owner:** `{BOT_OWNER}`
 🔄 **Last Updated:** Just now
                 """
                 
                 keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🔄 Refresh", callback_data="refresh_stats")],
+                    [InlineKeyboardButton("🔄 Refresh Stats", callback_data="owner_stats")],
+                    [InlineKeyboardButton("👑 Back to Panel", callback_data="owner_panel")],
                     [InlineKeyboardButton("🗑️ Close", callback_data="close")]
                 ])
                 
                 await callback_query.message.edit_text(stats_text, reply_markup=keyboard)
-                return await callback_query.answer("✅ Stats refreshed!")
+                return await callback_query.answer("📊 Stats Updated!")
                 
             except Exception as e:
                 return await callback_query.answer(f"❌ Error: {str(e)}", show_alert=True)
         
-        # Check if user is admin or bot owner for regular callbacks
-        try:
-            is_user_admin = await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)
-        except Exception as e:
-            print(f"Error checking admin status in callback: {e}")
-            # Allow bot owner even if admin check fails
-            if await is_bot_owner(user_id):
-                is_user_admin = True
-            else:
-                return await callback_query.answer("❌ Error checking permissions", show_alert=True)
+        # Handle quick broadcast callback
+        if data == "quick_broadcast":
+            if not await is_bot_owner(user_id):
+                return await callback_query.answer("❌ Access denied!", show_alert=True)
             
-        if not is_user_admin:
-            return await callback_query.answer("❌ You are not administrator", show_alert=True)
+            broadcast_text = """
+📡 **Quick Broadcast**
 
-        if data == "close":
-            return await callback_query.message.delete()
+To send a message to all groups:
+1. Use `/broadcast <your message>`
+2. Or reply to any message with `/broadcast`
+
+**Example:**
+`/broadcast 🚨 Important announcement for all groups!`
+
+**Note:** This feature works only in private chat with the bot.
+            """
+            
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("👑 Back to Panel", callback_data="owner_panel")],
+                [InlineKeyboardButton("🗑️ Close", callback_data="close")]
+            ])
+            
+            await callback_query.message.edit_text(broadcast_text, reply_markup=keyboard)
+            return await callback_query.answer("📡 Broadcast Info Displayed!")
+        
+        # For group commands, check admin permissions
+        if chat_id < 0 and not is_user_admin:  # Group chat and not admin
+            return await callback_query.answer("❌ You are not administrator", show_alert=True)
 
         if data == "back":
             mode, limit, penalty = await get_config(chat_id)
@@ -519,7 +603,8 @@ async def bot_stats(client: Client, message):
         """
         
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 Refresh", callback_data="refresh_stats")],
+            [InlineKeyboardButton("🔄 Refresh", callback_data="owner_stats")],
+            [InlineKeyboardButton("👑 Owner Panel", callback_data="owner_panel")],
             [InlineKeyboardButton("🗑️ Close", callback_data="close")]
         ])
         
