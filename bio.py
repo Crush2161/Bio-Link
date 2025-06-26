@@ -745,16 +745,44 @@ async def broadcast_message(client: Client, message):
     try:
         from helper.utils import db
         
-        # Get all group IDs
-        groups = await db.punishments.distinct("chat_id")
+        # Get all chats the bot is in from database collections
+        groups = set()
+        
+        status_msg = await message.reply_text("📡 **Finding groups...**")
+        
+        # Get groups from database collections
+        try:
+            punishment_groups = await db.punishments.distinct("chat_id")
+            warning_groups = await db.warnings.distinct("chat_id") 
+            whitelist_groups = await db.whitelists.distinct("chat_id")
+            
+            groups.update(punishment_groups)
+            groups.update(warning_groups)
+            groups.update(whitelist_groups)
+        except Exception as e:
+            print(f"Error getting groups from database: {e}")
+        
+        # Filter out positive IDs (private chats) and ensure we only have group IDs
+        groups = [chat_id for chat_id in groups if chat_id < 0]
         
         if not groups:
-            return await message.reply_text("❌ **No groups found in database!**")
+            return await status_msg.edit_text(
+                "❌ **No groups found!**\n\n"
+                "This can happen if:\n"
+                "• Bot hasn't been used in any groups yet\n"
+                "• No groups have configured the bot\n"
+                "• Database is empty\n\n"
+                "**Solution:** Add the bot to groups and:\n"
+                "1. Use `/config` command in the group\n"
+                "2. Let someone with a bio link post a message\n"
+                "3. Use `/free` or `/unfree` commands\n\n"
+                "After that, groups will be tracked for broadcasting."
+            )
+        
+        await status_msg.edit_text(f"📡 **Broadcasting to {len(groups)} groups...**")
         
         sent_count = 0
         failed_count = 0
-        
-        status_msg = await message.reply_text(f"📡 **Broadcasting to {len(groups)} groups...**")
         
         for chat_id in groups:
             try:
@@ -774,6 +802,8 @@ async def broadcast_message(client: Client, message):
 • Sent: `{sent_count}` groups
 • Failed: `{failed_count}` groups
 • Total: `{len(groups)}` groups
+
+**Note:** Failed sends are usually due to bot not being admin or group being inactive.
         """
         
         await status_msg.edit_text(result_text)
