@@ -27,6 +27,22 @@ if not all([API_ID, API_HASH, BOT_TOKEN, MONGO_URI]):
     except FileNotFoundError:
         pass
 
+# Bot Owner Configuration - Add your user ID here
+BOT_OWNER = os.getenv("BOT_OWNER")
+
+# If env vars are not set, try to load from env_config.json
+if not BOT_OWNER:
+    try:
+        with open("env_config.json", "r") as f:
+            config = json.load(f)
+            BOT_OWNER = config.get("BOT_OWNER")
+    except FileNotFoundError:
+        pass
+
+# Convert to int if it's a string
+if BOT_OWNER:
+    BOT_OWNER = int(BOT_OWNER)
+
 DEFAULT_WARNING_LIMIT = 3
 DEFAULT_PUNISHMENT = "mute"  # Options: "mute", "ban"
 DEFAULT_CONFIG = ("warn", DEFAULT_WARNING_LIMIT, DEFAULT_PUNISHMENT)
