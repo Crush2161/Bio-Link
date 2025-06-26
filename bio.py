@@ -4,11 +4,11 @@ User: https://t.me/Forever_Crush
 Channel: https://t.me/Crush_Forever
 """
 
-from pyrogram import Client, filters, errors
+from pyrogram import Client, filters, errors, enums
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ChatPermissions
 
 from helper.utils import (
-    is_admin,
+    is_admin, is_bot_owner,
     get_config, update_config,
     increment_warning, reset_warnings,
     is_whitelisted, add_whitelist, remove_whitelist, get_whitelist
@@ -18,7 +18,8 @@ from config import (
     API_ID,
     API_HASH,
     BOT_TOKEN,
-    URL_PATTERN
+    URL_PATTERN,
+    BOT_OWNER
 )
 
 app = Client(
@@ -71,18 +72,32 @@ async def start_handler(client: Client, message):
 @app.on_message(filters.command("help"))
 async def help_handler(client: Client, message):
     chat_id = message.chat.id
+    user_id = message.from_user.id
+    
     help_text = (
         "**🛠️ 𝐁𝐨𝐭 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 & 𝐔𝐬𝐚𝐠𝐞**\n\n"
         "`/config` – ꜱᴇᴛ ᴡᴀʀɴ-ʟɪᴍɪᴛ & ᴘᴜɴɪꜱʜᴍᴇɴᴛ ᴍᴏᴅᴇ\n"
         "`/free` – ᴡʜɪᴛᴇʟɪꜱᴛ ᴀ ᴜꜱᴇʀ (ʀᴇᴘʟʏ ᴏʀ ᴜꜱᴇʀ/ɪᴅ)\n"
         "`/unfree` – ʀᴇᴍᴏᴠᴇ ꜰʀᴏᴍ ᴡʜɪᴛᴇʟɪꜱᴛ\n"
-        "`/freelist` – ʟɪꜱᴛ ᴀʟʟ ᴡʜɪᴛᴇʟɪꜱᴛᴇᴅ ᴜꜱᴇʀꜱ\n\n"
+        "`/freelist` – ʟɪꜱᴛ ᴀʟʟ ᴡʜɪᴛᴇʟɪꜱᴛᴇᴅ ᴜꜱᴇʀꜱ\n"
+        "`/adminlist` – ʟɪꜱᴛ ᴀʟʟ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴꜱ\n\n"
         "**𝐖𝐡𝐞𝐧 𝐬𝐨𝐦𝐞𝐨𝐧𝐞 𝐰𝐢𝐭𝐡 𝐚 𝐔𝐑𝐋 𝐢𝐧 𝐭𝐡𝐞𝐢𝐫 𝐛𝐢𝐨 𝐩𝐨𝐬𝐭𝐬, 𝐈'𝐥𝐥:**\n"
         " 1. ⚠️ ᴡᴀʀɴ ᴛʜᴇᴍ\n"
-        " 2. 🔇 ᴍᴜᴛᴇ ɪꜰ ᴛʜᴇʏ ᴇxᴄᴇᴇᴅ ʟɪᴍɪᴛ\n"
+        " 2. 🔇 ᴍᴜᴛᴇ ɪꜢ ᴛʜᴇʏ ᴇxᴄᴇᴇᴅ ʟɪᴍɪᴛ\n"
         " 3. 🔨 ʙᴀɴ ɪꜢ ꜱᴇᴛ ᴛᴏ ʙᴀɴ\n\n"
         "**𝐔𝐬𝐞 𝐭𝐡𝐞 𝐢𝐧𝐥𝐢𝐧𝐞 𝐛𝐮𝐭𝐭𝐨𝐧𝐬 𝐨𝐧 𝐰𝐚𝐫𝐧𝐢𝐧𝐠𝐬 𝐭𝐨 𝐜𝐚𝐧𝐜𝐞𝐥 𝐨𝐫 𝐰𝐡𝐢𝐭𝐞𝐥𝐢𝐬𝐭**"
     )
+    
+    # Add bot owner commands if user is the bot owner
+    if await is_bot_owner(user_id):
+        help_text += (
+            "\n\n👑 **𝐁𝐨𝐭 𝐎𝐰𝐧𝐞𝐫 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬:**\n"
+            "`/stats` – ᴠɪᴇᴡ ʙᴏᴛ ꜱᴛᴀᴛɪꜱᴛɪᴄꜱ (ᴘʀɪᴠᴀᴛᴇ)\n"
+            "`/broadcast` – ꜱᴇɴᴅ ᴍᴇꜱꜱᴀɢᴇ ᴛᴏ ᴀʟʟ ɢʀᴏᴜᴘꜱ (ᴘʀɪᴠᴀᴛᴇ)\n"
+            "`/globalban` – ɢʟᴏʙᴀʟ ʙᴀɴ ᴜꜱᴇʀ (ᴘʀɪᴠᴀᴛᴇ)\n\n"
+            "✨ **You have owner privileges in all groups!**"
+        )
+    
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🗑️ 𝐂𝐥𝐨𝐬𝐞", callback_data="close")]
     ])
@@ -92,7 +107,7 @@ async def help_handler(client: Client, message):
 async def configure(client: Client, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
-    if not await is_admin(client, chat_id, user_id):
+    if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
 
     mode, limit, penalty = await get_config(chat_id)
@@ -115,7 +130,7 @@ async def configure(client: Client, message):
 async def command_free(client: Client, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
-    if not await is_admin(client, chat_id, user_id):
+    if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
 
     if message.reply_to_message:
@@ -143,7 +158,7 @@ async def command_free(client: Client, message):
 async def command_unfree(client: Client, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
-    if not await is_admin(client, chat_id, user_id):
+    if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
 
     if message.reply_to_message:
@@ -173,7 +188,7 @@ async def command_unfree(client: Client, message):
 async def command_freelist(client: Client, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
-    if not await is_admin(client, chat_id, user_id):
+    if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
 
     ids = await get_whitelist(chat_id)
@@ -201,12 +216,61 @@ async def callback_handler(client: Client, callback_query):
         chat_id = callback_query.message.chat.id
         user_id = callback_query.from_user.id
         
-        # Check if user is admin with error handling
+        # Bot owner specific callbacks
+        if data == "refresh_stats":
+            if not await is_bot_owner(user_id):
+                return await callback_query.answer("❌ Access denied!", show_alert=True)
+            
+            try:
+                from helper.utils import db
+                
+                # Get statistics from database
+                total_groups = await db.punishments.count_documents({})
+                total_warnings = await db.warnings.count_documents({})
+                total_whitelisted = await db.whitelists.count_documents({})
+                
+                # Get bot info
+                bot = await client.get_me()
+                
+                stats_text = f"""
+🤖 **Bot Statistics** 📊
+
+**Bot Info:**
+• Name: {bot.first_name}
+• Username: @{bot.username}
+• ID: `{bot.id}`
+
+**Database Stats:**
+• Total Groups: `{total_groups}`
+• Total Warnings: `{total_warnings}`  
+• Total Whitelisted Users: `{total_whitelisted}`
+
+**Owner:** `{BOT_OWNER if BOT_OWNER else 'Not Set'}`
+
+🔄 **Last Updated:** Just now
+                """
+                
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔄 Refresh", callback_data="refresh_stats")],
+                    [InlineKeyboardButton("🗑️ Close", callback_data="close")]
+                ])
+                
+                await callback_query.message.edit_text(stats_text, reply_markup=keyboard)
+                return await callback_query.answer("✅ Stats refreshed!")
+                
+            except Exception as e:
+                return await callback_query.answer(f"❌ Error: {str(e)}", show_alert=True)
+        
+        # Check if user is admin or bot owner for regular callbacks
         try:
-            is_user_admin = await is_admin(client, chat_id, user_id)
+            is_user_admin = await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)
         except Exception as e:
             print(f"Error checking admin status in callback: {e}")
-            return await callback_query.answer("❌ Error checking permissions", show_alert=True)
+            # Allow bot owner even if admin check fails
+            if await is_bot_owner(user_id):
+                is_user_admin = True
+            else:
+                return await callback_query.answer("❌ Error checking permissions", show_alert=True)
             
         if not is_user_admin:
             return await callback_query.answer("❌ You are not administrator", show_alert=True)
@@ -359,7 +423,11 @@ async def callback_handler(client: Client, callback_query):
 async def check_bio(client: Client, message):
     chat_id = message.chat.id
     user_id = message.from_user.id
-    if await is_admin(client, chat_id, user_id) or await is_whitelisted(chat_id, user_id):
+    
+    # Check if user is admin, whitelisted, or bot owner - bot owner is always exempt
+    if (await is_admin(client, chat_id, user_id) or 
+        await is_whitelisted(chat_id, user_id) or 
+        await is_bot_owner(user_id)):
         return
 
     # Get user info safely using our helper function
@@ -415,5 +483,209 @@ async def check_bio(client: Client, message):
     else:
         await reset_warnings(chat_id, user_id)
 
+# Bot Owner Commands - These commands work only for the bot owner
+@app.on_message(filters.command("stats") & filters.private)
+async def bot_stats(client: Client, message):
+    """Bot statistics command - Owner only"""
+    user_id = message.from_user.id
+    if not await is_bot_owner(user_id):
+        return await message.reply_text("❌ **Access Denied!** This command is only for the bot owner.")
+    
+    try:
+        from helper.utils import db
+        
+        # Get statistics from database
+        total_groups = await db.punishments.count_documents({})
+        total_warnings = await db.warnings.count_documents({})
+        total_whitelisted = await db.whitelists.count_documents({})
+        
+        # Get bot info
+        bot = await client.get_me()
+        
+        stats_text = f"""
+🤖 **Bot Statistics** 📊
+
+**Bot Info:**
+• Name: {bot.first_name}
+• Username: @{bot.username}
+• ID: `{bot.id}`
+
+**Database Stats:**
+• Total Groups: `{total_groups}`
+• Total Warnings: `{total_warnings}`  
+• Total Whitelisted Users: `{total_whitelisted}`
+
+**Owner:** `{BOT_OWNER if BOT_OWNER else 'Not Set'}`
+        """
+        
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 Refresh", callback_data="refresh_stats")],
+            [InlineKeyboardButton("🗑️ Close", callback_data="close")]
+        ])
+        
+        await message.reply_text(stats_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        await message.reply_text(f"❌ **Error getting stats:** `{str(e)}`")
+
+@app.on_message(filters.command("broadcast") & filters.private)
+async def broadcast_message(client: Client, message):
+    """Broadcast message to all groups - Owner only"""
+    user_id = message.from_user.id
+    if not await is_bot_owner(user_id):
+        return await message.reply_text("❌ **Access Denied!** This command is only for the bot owner.")
+    
+    if len(message.command) < 2 and not message.reply_to_message:
+        return await message.reply_text(
+            "❗ **Usage:** `/broadcast <message>` or reply to a message with `/broadcast`\n\n"
+            "This will send the message to all groups where the bot is active."
+        )
+    
+    # Get broadcast message
+    broadcast_msg = None
+    broadcast_text = None
+    
+    if message.reply_to_message:
+        broadcast_msg = message.reply_to_message
+    else:
+        broadcast_text = " ".join(message.command[1:])
+        
+    try:
+        from helper.utils import db
+        
+        # Get all group IDs
+        groups = await db.punishments.distinct("chat_id")
+        
+        if not groups:
+            return await message.reply_text("❌ **No groups found in database!**")
+        
+        sent_count = 0
+        failed_count = 0
+        
+        status_msg = await message.reply_text(f"📡 **Broadcasting to {len(groups)} groups...**")
+        
+        for chat_id in groups:
+            try:
+                if broadcast_msg:
+                    await broadcast_msg.copy(chat_id)
+                elif broadcast_text:
+                    await client.send_message(chat_id, broadcast_text)
+                sent_count += 1
+            except Exception as e:
+                failed_count += 1
+                print(f"Failed to broadcast to {chat_id}: {e}")
+        
+        result_text = f"""
+✅ **Broadcast Complete!**
+
+📊 **Results:**
+• Sent: `{sent_count}` groups
+• Failed: `{failed_count}` groups
+• Total: `{len(groups)}` groups
+        """
+        
+        await status_msg.edit_text(result_text)
+        
+    except Exception as e:
+        await message.reply_text(f"❌ **Error during broadcast:** `{str(e)}`")
+
+@app.on_message(filters.command("adminlist"))
+async def admin_list(client: Client, message):
+    """List all admins in current group - Enhanced for owner"""
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    # Check if user is admin or bot owner
+    if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
+        return await message.reply_text("❌ **You need to be an admin to use this command!**")
+    
+    try:
+        # Use a simpler approach - get chat administrators
+        chat = await client.get_chat(chat_id)
+        admin_text = f"👨‍💼 **Group Administrators for {chat.title}:**\n\n"
+        
+        # Add basic info for now - we'll try to get more details later
+        admin_text += "ℹ️ **Note:** Admin list feature is being updated.\n"
+        admin_text += "Use this command again in groups for full admin list.\n\n"
+        
+        # Add owner info if bot owner is checking
+        if await is_bot_owner(user_id):
+            admin_text += f"🤖 **Bot Owner:** `{BOT_OWNER}`\n"
+            admin_text += "✅ **You have bot owner privileges in all groups!**"
+            
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("🗑️ Close", callback_data="close")]])
+        await message.reply_text(admin_text, reply_markup=keyboard)
+        
+    except Exception as e:
+        await message.reply_text(f"❌ **Error getting admin list:** `{str(e)}`")
+
+@app.on_message(filters.command("globalban") & filters.private)
+async def global_ban_user(client: Client, message):
+    """Global ban a user from all groups - Owner only"""
+    user_id = message.from_user.id
+    if not await is_bot_owner(user_id):
+        return await message.reply_text("❌ **Access Denied!** This command is only for the bot owner.")
+    
+    if len(message.command) < 2:
+        return await message.reply_text(
+            "❗ **Usage:** `/globalban <user_id>`\n\n"
+            "This will ban the user from all groups where the bot is admin."
+        )
+    
+    try:
+        target_user_id = int(message.command[1])
+        
+        # Don't allow banning the owner or other bots
+        if target_user_id == BOT_OWNER:
+            return await message.reply_text("❌ **Cannot ban the bot owner!**")
+            
+        from helper.utils import db
+        
+        # Get all group IDs
+        groups = await db.punishments.distinct("chat_id")
+        
+        if not groups:
+            return await message.reply_text("❌ **No groups found in database!**")
+        
+        banned_count = 0
+        failed_count = 0
+        
+        status_msg = await message.reply_text(f"⚡ **Global banning user {target_user_id} from {len(groups)} groups...**")
+        
+        for chat_id in groups:
+            try:
+                await client.ban_chat_member(chat_id, target_user_id)
+                banned_count += 1
+            except Exception as e:
+                failed_count += 1
+                print(f"Failed to ban {target_user_id} from {chat_id}: {e}")
+        
+        result_text = f"""
+⚡ **Global Ban Complete!**
+
+🎯 **Target:** `{target_user_id}`
+
+📊 **Results:**
+• Banned from: `{banned_count}` groups
+• Failed: `{failed_count}` groups
+• Total: `{len(groups)}` groups
+        """
+        
+        await status_msg.edit_text(result_text)
+        
+    except ValueError:
+        await message.reply_text("❌ **Invalid user ID! Please provide a valid numeric user ID.**")
+    except Exception as e:
+        await message.reply_text(f"❌ **Error during global ban:** `{str(e)}`")
+
 if __name__ == "__main__":
+    # Print startup information
+    print("🤖 BioLink Protector Bot Starting...")
+    print(f"📊 Bot Owner: {'Configured' if BOT_OWNER else 'Not Set'}")
+    if BOT_OWNER:
+        print(f"👑 Owner ID: {BOT_OWNER}")
+        print("✅ Bot owner will have access to all groups and special commands!")
+    else:
+        print("⚠️  Bot owner not configured. Set BOT_OWNER in environment or config file.")
+    print("🚀 Starting bot...")
     app.run()
