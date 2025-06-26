@@ -12,7 +12,7 @@ from helper.utils import (
     get_config, update_config,
     increment_warning, reset_warnings,
     is_whitelisted, add_whitelist, remove_whitelist, get_whitelist,
-    track_group, get_all_groups  # Add new group tracking functions
+    track_group, get_all_groups
 )
 
 from config import (
@@ -90,13 +90,13 @@ async def start_handler(client: Client, message):
         except:
             pass
 
-# Main bio checking function - this now tracks groups automatically
+# Main bio checking function with automatic group tracking
 @app.on_message(filters.group & ~filters.service & ~filters.channel & ~filters.via_bot)
 async def check_bio(client: Client, message):
     try:
         chat_id = message.chat.id
         
-        # Track this group when any message is sent - THIS IS THE KEY PART!
+        # Track this group automatically when any message is received
         try:
             chat = await client.get_chat(chat_id)
             await track_group(chat_id, chat.title)
@@ -171,7 +171,7 @@ async def check_bio(client: Client, message):
         print(f"Error in check_bio: {e}")
         # Don't send error messages to users, just log them
 
-# Bot Owner Commands - Enhanced with group tracking
+# Bot Owner Command - List all tracked groups
 @app.on_message(filters.command("listgroups") & filters.private)
 async def list_tracked_groups(client: Client, message):
     """List all tracked groups - Owner only"""
@@ -212,7 +212,7 @@ async def list_tracked_groups(client: Client, message):
         text += "\n✅ **Group tracking is working!** All groups are being saved to MongoDB automatically."
         
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📊 Stats", callback_data="owner_stats")],
+            [InlineKeyboardButton("🔄 Refresh", callback_data="refresh_groups")],
             [InlineKeyboardButton("🗑️ Close", callback_data="close")]
         ])
         
@@ -224,13 +224,24 @@ async def list_tracked_groups(client: Client, message):
 if __name__ == "__main__":
     # Print startup information
     print("🤖 BioLink Protector Bot Starting...")
+    print("🔗 Group tracking is now enabled - groups will be automatically saved to MongoDB!")
     print(f"📊 Bot Owner: {'Configured' if BOT_OWNER else 'Not Set'}")
     if BOT_OWNER:
         print(f"👑 Owner ID: {BOT_OWNER}")
         print("✅ Bot owner will have access to all groups and special commands!")
     else:
-        print("⚠️  Bot owner not configured. Set BOT_OWNER in environment or config file.")
+        print("⚠️ Bot owner not configured. Set BOT_OWNER in environment or config file.")
     print("🚀 Starting bot...")
-    print("🔗 Group tracking is now enabled - groups will be automatically saved to MongoDB!")
     print("📝 Use /listgroups command (owner only) to see tracked groups")
+    
+    # Test MongoDB connection
+    try:
+        from helper.utils import mongo_client
+        if mongo_client:
+            print("✅ MongoDB connection ready for group tracking")
+        else:
+            print("⚠️ MongoDB connection not available - group tracking will be logged only")
+    except Exception as e:
+        print(f"⚠️ MongoDB test failed: {e}")
+    
     app.run()
