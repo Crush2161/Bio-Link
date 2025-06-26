@@ -48,6 +48,11 @@ async def get_user_info_safe(client: Client, user_id: int):
 @app.on_message(filters.command("start"))
 async def start_handler(client: Client, message):
     chat_id = message.chat.id
+    
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     bot = await client.get_me()
     add_url = f"https://t.me/{bot.username}?startgroup=true"
@@ -80,7 +85,11 @@ async def start_handler(client: Client, message):
 @app.on_message(filters.command("help"))
 async def help_handler(client: Client, message):
     chat_id = message.chat.id
-    user_id = message.from_user.id
+    user_id = message.from_user.id if message.from_user else None
+    
+    # If no user (channel message), return early
+    if not user_id:
+        return
     
     help_text = (
         "**🛠️ 𝐁𝐨𝐭 𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬 & 𝐔𝐬𝐚𝐠𝐞**\n\n"
@@ -111,9 +120,14 @@ async def help_handler(client: Client, message):
     ])
     await client.send_message(chat_id, help_text, reply_markup=kb)
 
-@app.on_message(filters.group & filters.command("config"))
+@app.on_message(filters.group & filters.command("config") & ~filters.via_bot)
 async def configure(client: Client, message):
     chat_id = message.chat.id
+    
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
@@ -134,9 +148,14 @@ async def configure(client: Client, message):
     )
     await message.delete()
 
-@app.on_message(filters.group & filters.command("free"))
+@app.on_message(filters.group & filters.command("free") & ~filters.via_bot)
 async def command_free(client: Client, message):
     chat_id = message.chat.id
+    
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
@@ -162,9 +181,14 @@ async def command_free(client: Client, message):
     ])
     await client.send_message(chat_id, text, reply_markup=keyboard)
 
-@app.on_message(filters.group & filters.command("unfree"))
+@app.on_message(filters.group & filters.command("unfree") & ~filters.via_bot)
 async def command_unfree(client: Client, message):
     chat_id = message.chat.id
+    
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
@@ -195,6 +219,11 @@ async def command_unfree(client: Client, message):
 @app.on_message(filters.group & filters.command("freelist"))
 async def command_freelist(client: Client, message):
     chat_id = message.chat.id
+    
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not (await is_admin(client, chat_id, user_id) or await is_bot_owner(user_id)):
         return
@@ -222,6 +251,11 @@ async def callback_handler(client: Client, callback_query):
     try:
         data = callback_query.data
         chat_id = callback_query.message.chat.id
+        
+        # Check if callback has a user
+        if not callback_query.from_user:
+            return await callback_query.answer("❌ Invalid user!", show_alert=True)
+            
         user_id = callback_query.from_user.id
         
         # Check if user is admin or bot owner for regular callbacks
@@ -265,8 +299,8 @@ async def callback_handler(client: Client, callback_query):
 
 **Available Commands:**
 • `/stats` - View bot statistics
-• `/broadcast <message>` - Send to all groups  
-• `/globalban <user_id>` - Global ban user
+• `/broadcast` - ꜱᴇɴᴅ ᴍᴇꜱꜱᴀɢᴇ ᴛᴏ ᴀʟʟ ɢʀᴏᴜᴘꜱ  
+• `/globalban` - ɢʟᴏʙᴀʟ ʙᴀɴ ᴜꜱᴇʀ
 • `/adminlist` - Enhanced admin list
 
 **Owner Privileges:**
@@ -284,7 +318,10 @@ Use the buttons below for quick actions:
                 [InlineKeyboardButton("🗑️ Close", callback_data="close")]
             ])
             
-            await callback_query.message.edit_text(owner_text, reply_markup=keyboard)
+            try:
+                await safe_edit_message(callback_query.message, owner_text, keyboard)
+            except errors.MessageNotModified:
+                pass  # Message content is the same, ignore
             return await callback_query.answer("👑 Owner Panel Loaded!")
         
         # Handle owner stats callback
@@ -326,7 +363,10 @@ Use the buttons below for quick actions:
                     [InlineKeyboardButton("🗑️ Close", callback_data="close")]
                 ])
                 
-                await callback_query.message.edit_text(stats_text, reply_markup=keyboard)
+                try:
+                    await callback_query.message.edit_text(stats_text, reply_markup=keyboard)
+                except errors.MessageNotModified:
+                    pass  # Message content is the same, ignore
                 return await callback_query.answer("📊 Stats Updated!")
                 
             except Exception as e:
@@ -355,7 +395,10 @@ To send a message to all groups:
                 [InlineKeyboardButton("🗑️ Close", callback_data="close")]
             ])
             
-            await callback_query.message.edit_text(broadcast_text, reply_markup=keyboard)
+            try:
+                await callback_query.message.edit_text(broadcast_text, reply_markup=keyboard)
+            except errors.MessageNotModified:
+                pass  # Message content is the same, ignore
             return await callback_query.answer("📡 Broadcast Info Displayed!")
         
         # For group commands, check admin permissions
@@ -503,9 +546,14 @@ To send a message to all groups:
         except:
             pass
 
-@app.on_message(filters.group)
+@app.on_message(filters.group & ~filters.service & ~filters.channel)
 async def check_bio(client: Client, message):
     chat_id = message.chat.id
+    
+    # Check if message has a user (not from channel or automated)
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     
     # Check if user is admin, whitelisted, or bot owner - bot owner is always exempt
@@ -571,6 +619,10 @@ async def check_bio(client: Client, message):
 @app.on_message(filters.command("stats") & filters.private)
 async def bot_stats(client: Client, message):
     """Bot statistics command - Owner only"""
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not await is_bot_owner(user_id):
         return await message.reply_text("❌ **Access Denied!** This command is only for the bot owner.")
@@ -616,6 +668,10 @@ async def bot_stats(client: Client, message):
 @app.on_message(filters.command("broadcast") & filters.private)
 async def broadcast_message(client: Client, message):
     """Broadcast message to all groups - Owner only"""
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not await is_bot_owner(user_id):
         return await message.reply_text("❌ **Access Denied!** This command is only for the bot owner.")
@@ -678,6 +734,11 @@ async def broadcast_message(client: Client, message):
 async def admin_list(client: Client, message):
     """List all admins in current group - Enhanced for owner"""
     chat_id = message.chat.id
+    
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     
     # Check if user is admin or bot owner
@@ -707,6 +768,10 @@ async def admin_list(client: Client, message):
 @app.on_message(filters.command("globalban") & filters.private)
 async def global_ban_user(client: Client, message):
     """Global ban a user from all groups - Owner only"""
+    # Check if message has a user
+    if not message.from_user:
+        return
+        
     user_id = message.from_user.id
     if not await is_bot_owner(user_id):
         return await message.reply_text("❌ **Access Denied!** This command is only for the bot owner.")
@@ -762,6 +827,18 @@ async def global_ban_user(client: Client, message):
         await message.reply_text("❌ **Invalid user ID! Please provide a valid numeric user ID.**")
     except Exception as e:
         await message.reply_text(f"❌ **Error during global ban:** `{str(e)}`")
+
+async def safe_edit_message(message, text, reply_markup=None):
+    """Safely edit a message with error handling"""
+    try:
+        if reply_markup:
+            await message.edit_text(text, reply_markup=reply_markup)
+        else:
+            await message.edit_text(text)
+    except errors.MessageNotModified:
+        pass  # Message content is the same, ignore
+    except Exception as e:
+        print(f"Error editing message: {e}")
 
 if __name__ == "__main__":
     # Print startup information
