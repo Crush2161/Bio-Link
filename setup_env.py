@@ -16,7 +16,8 @@ def load_config():
             "API_ID": "",
             "API_HASH": "",
             "BOT_TOKEN": "",
-            "MONGO_URI": ""
+            "MONGO_URI": "",
+            "BOT_OWNER": ""
         }
 
 def setup_environment():
@@ -45,6 +46,14 @@ def setup_environment():
     if not config["MONGO_URI"]:
         print("MongoDB URI is required to run the bot.")
         return False
+    
+    config["BOT_OWNER"] = input(f"Enter Bot Owner User ID [{config['BOT_OWNER'] if config['BOT_OWNER'] else 'optional'}]: ") or config["BOT_OWNER"]
+    if config["BOT_OWNER"]:
+        try:
+            int(config["BOT_OWNER"])  # Validate it's a number
+        except ValueError:
+            print("Bot Owner ID must be a number. Leaving empty.")
+            config["BOT_OWNER"] = ""
     
     save_config(config)
     
