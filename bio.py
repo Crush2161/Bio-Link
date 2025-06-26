@@ -1,7 +1,7 @@
 """
-Author: 𝐇єᴧʀ፝֠֩ᴛʙєᴧᴛ
-User: https://t.me/l_HEART_BEAT_l
-Channel: https://t.me/ll_P_U_L_lI
+Author: Crush Forever 
+User: https://t.me/Forever_Crush
+Channel: https://t.me/Crush_Forever
 """
 
 from pyrogram import Client, filters, errors
