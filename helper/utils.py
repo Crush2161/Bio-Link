@@ -5,7 +5,8 @@ from config import (
     MONGO_URI,
     DEFAULT_CONFIG,
     DEFAULT_PUNISHMENT,
-    DEFAULT_WARNING_LIMIT
+    DEFAULT_WARNING_LIMIT,
+    BOT_OWNER
 )
 
 mongo_client = AsyncIOMotorClient(MONGO_URI)
@@ -16,12 +17,23 @@ whitelists_collection = db['whitelists']
 
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     try:
+        # Check if user is bot owner - bot owner is always admin
+        if BOT_OWNER and user_id == BOT_OWNER:
+            return True
+            
         member = await client.get_chat_member(chat_id, user_id)
         return member.status in [enums.ChatMemberStatus.OWNER, enums.ChatMemberStatus.ADMINISTRATOR]
     except Exception as e:
         # Handle cases where chat is invalid, user not found, or bot doesn't have access
         print(f"Error checking admin status: {e}")
+        # If we can't check admin status, still allow bot owner
+        if BOT_OWNER and user_id == BOT_OWNER:
+            return True
         return False
+
+async def is_bot_owner(user_id: int) -> bool:
+    """Check if user is the bot owner"""
+    return bool(BOT_OWNER and user_id == BOT_OWNER)
 
 async def get_config(chat_id: int):
     doc = await punishments_collection.find_one({'chat_id': chat_id})
