@@ -20,6 +20,10 @@ async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
         # Check if user is bot owner - bot owner is always admin
         if BOT_OWNER and user_id == BOT_OWNER:
             return True
+        
+        # Check if it's a private chat (DM) - admin check doesn't apply to DMs
+        if chat_id > 0:  # Positive chat_id means private chat
+            return False
             
         member = await client.get_chat_member(chat_id, user_id)
         return member.status in [enums.ChatMemberStatus.OWNER, enums.ChatMemberStatus.ADMINISTRATOR]
@@ -29,6 +33,7 @@ async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
         # If we can't check admin status, still allow bot owner
         if BOT_OWNER and user_id == BOT_OWNER:
             return True
+        return False
         return False
 
 async def is_bot_owner(user_id: int) -> bool:
