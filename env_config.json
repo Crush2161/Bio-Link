@@ -2,5 +2,6 @@
   "API_ID": "",
   "API_HASH": "",
   "BOT_TOKEN": "",
-  "MONGO_URI": ""
+  "MONGO_URI": "",
+  "BOT_OWNER": ""
 }
